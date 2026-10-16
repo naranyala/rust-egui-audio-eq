@@ -12,38 +12,63 @@ Legend: `[ ]` open · `[x]` done · `[~]` in progress / blocked (note why).
       X11+Wayland display, ALSA + PulseAudio sink (48 kHz), system build deps
       (alsa, xkbcommon, xcb, x11 family, libpulse) all present, crates.io
       reachable — no installs required
-- [ ] `[E1/G8]` Starter scaffold: pin `eframe 0.36` / `cpal 0.18` /
+- [x] `[E1/G8]` Starter scaffold: pin `eframe 0.36` / `cpal 0.18` /
       `egui_plot 0.37` (0.37 is the egui-0.36 pairing — egui_plot 0.36 wants
-      egui 0.35); empty `App` opens a window and exits cleanly
-- [ ] `[E2/G2]` RBJ biquads (`src/dsp/biquad.rs`): peaking + low/high shelf
+      egui 0.35); empty `App` opens a window and exits cleanly — **done**:
+      `default-features = false` + `["default_fonts", "glow", "wayland",
+      "x11"]` cut deps from 347 → 182 unique crates (no wgpu/accesskit/zbus
+      tree); window opens on wlroots session
+- [x] `[E2/G2]` RBJ biquads (`src/dsp/biquad.rs`): peaking + low/high shelf
       + LPF/HPF; unit tests for flat transparency, ±6 dB gain, shelf
-      direction, stability at extremes
-- [ ] `[E2/G2,G5]` `EqChain` (`src/dsp/eq.rs`): 8 bands (60/150/400/1k/
+      direction, stability at extremes — **done**: 7 tests
+- [x] `[E2/G2,G5]` `EqChain` (`src/dsp/eq.rs`): 8 bands (60/150/400/1k/
       2.4k/6k/12k/16k Hz — low-shelf first, high-shelf last), per-buffer
-      coefficient recompute, `magnitude_response`; flat-at-0-dB test
-- [ ] `[E2/G1]` Parameter store + smoothing (`src/state.rs`,
+      coefficient recompute, `magnitude_response`; flat-at-0-dB test —
+      **done**: `PEAKING_Q = 1.0`, coefficient update every 32 frames
+      (BLOCK const), 5 tests
+- [x] `[E2/G1]` Parameter store + smoothing (`src/state.rs`,
       `src/dsp/smooth.rs`): shared snapshot-per-buffer pattern (`RwLock`
       read once per buffer, never held while processing) + one-pole ~20 ms
-      smoother against zipper noise
-- [ ] `[E6/G1]` cpal output stream (`src/audio.rs`): device + config
+      smoother against zipper noise — **done**: band τ = 20 ms, master
+      τ = 30 ms; 8 tests total across both files
+- [x] `[E6/G1]` cpal output stream (`src/engine/live.rs`): device + config
       selection, `f32`/`i16`/`u16` sample-format dispatch (cpal 0.18 requires
       the `timeout` argument), errors surfaced to the status bar instead of a
-      panic, `Stream` owned by the app
-- [ ] `[E3/G1]` Test signals (`src/dsp/source.rs`): tone (fixed + sweep),
-      white noise, pink noise, silence
-- [ ] `[E1/G1,G5]` Main UI (`src/app.rs`): 8 band sliders (±12 dB), master
+      panic, `Stream` owned by the app — **done**: `Device::description()`
+      (name() removed in 0.18), `Error` callback → status bar, `Drop` pauses
+      the stream
+- [x] `[E3/G1]` Test signals (`src/dsp/source.rs`): tone (fixed + sweep),
+      white noise, pink noise, silence — **done**: 440 Hz @ 0.3 amp, 200 Hz
+      → 8 kHz sweep, Paul-Kellet pink; 5 tests
+- [x] `[E1/G1,G5]` Main UI (`src/app/`): 8 band sliders (±12 dB), master
       gain, bypass toggle, source selector, status bar (device, rate, buffer,
-      last error)
-- [ ] `[E5/G5]` Response curve: `egui_plot` line from
+      last error) — **done**: egui 0.36 `Panel::left/top/bottom` +
+      `eframe::App::ui` (not `update`), BYPASS badge, RMS/peak meters,
+      `EQ_INITIAL_GAINS` / `EQ_INITIAL_BYPASS` env hooks for headless runs
+- [x] `[E5/G5]` Response curve: `egui_plot` line from
       `EqChain.magnitude_response` on a log-frequency axis (20 Hz–20 kHz),
-      recomputed only when parameters change
-- [ ] `[E5/G5]` Repaint wiring: `request_repaint` on parameter change plus
-      ~30 Hz while running, so meters/curve stay live without spinning the CPU
-- [ ] `[E7/G8]` Quality gates green: `cargo test` green,
+      recomputed only when parameters change — **done**: 200-pt line,
+      `x_grid_spacer` decade grid + kHz labels, `curve_dirty` flag
+- [x] `[E5/G5]` Repaint wiring: `request_repaint` on parameter change plus
+      ~30 Hz while running, so meters/curve stay live without spinning the
+      CPU — **done**: `request_repaint_after(33 ms)` after each frame
+- [x] `[E7/G8]` Quality gates green: `cargo test` green,
       `cargo clippy --all-targets -- -D warnings` clean, 10 s window smoke
-      run shows sink + sample rate in the status bar with no error
-- [ ] `[E7/G1]` Audible proof: app plays a tone while `parec` captures the
-      sink monitor; record RMS for bypass vs +6 dB @ 440 Hz as evidence
+      run shows sink + sample rate in the status bar with no error —
+      **done (2026-10-16)**: 26/26 tests, clippy exit 0, app stayed alive
+      with live `pactl list sink-inputs` entry
+      `PipeWire ALSA [rust-egui-audio-eq]`, only warning is a harmless
+      `xkbcommon` locale compose-file message
+- [x] `[E7/G1]` Audible proof: app plays a tone while `parec` captures the
+      sink monitor; record RMS for bypass vs +6 dB @ 440 Hz as evidence —
+      **done (2026-10-16)**, `alsa_output.pci-0000_00_1f.3.analog-stereo`
+      monitor, 4 s × 48 kHz stereo captures, sink restored to muted/0%
+      afterwards:
+      | config | RMS | level |
+      |---|---|---|
+      | flat EQ on (all 0 dB) | 0.2110 | −13.51 dBFS |
+      | bypass | 0.2082 | −13.63 dBFS (matches flat within 0.12 dB) |
+      | +6 dB @ 150 & 400 Hz bands | 0.4196 | −7.54 dBFS (**+6.09 dB** measured vs +6.59 dB RBJ prediction at 440 Hz) |
 
 ## P1 — Make it trustworthy, interoperable, observable
 

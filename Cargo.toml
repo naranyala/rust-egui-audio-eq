@@ -4,3 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# default-features off: skip wgpu (we render with glow), accesskit (D-Bus
+# accessibility tree), web_screen_reader (wasm-only) and links (webbrowser).
+eframe = { version = "0.36", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+    "x11",
+] }
+cpal = "0.18"
+egui_plot = "0.37"
